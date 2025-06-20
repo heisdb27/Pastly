@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shared Text - Pastly</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            background-image: 
+                radial-gradient(circle at 25% 25%, #1a1a2e 0%, transparent 50%),
+                radial-gradient(circle at 75% 75%, #16213e 0%, transparent 50%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #e2e8f0;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(51, 65, 85, 0.3);
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 
+                0 25px 50px -12px rgba(0, 0, 0, 0.5),
+                0 0 0 1px rgba(255, 255, 255, 0.05);
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #f8fafc;
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 40px rgba(245, 158, 11, 0.3);
+            margin-bottom: 10px;
+        }
+
+        .header .subtitle {
+            color: #cbd5e1;
+            font-size: 1.1rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #f59e0b;
+            font-size: 1.2rem;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(245, 158, 11, 0.2);
+            border-top: 4px solid #f59e0b;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            text-align: center;
+            padding: 40px;
+            color: #f87171;
+        }
+
+        .error-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+
+        .error h2 {
+            margin-bottom: 10px;
+            color: #f87171;
+        }
+
+        .error p {
+            color: #cbd5e1;
+        }
+
+        .content {
+            display: none;
+        }
+
+        .content.show {
+            display: block;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .text-container {
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 8px;
+            padding: 25px;
+            margin: 20px 0;
+            border-left: 4px solid #f59e0b;
+            border: 1px solid rgba(51, 65, 85, 0.3);
+            position: relative;
+        }
+
+        .text-content {
+            font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: 16px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            color: #e2e8f0;
+            max-height: 500px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        .text-content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .text-content::-webkit-scrollbar-track {
+            background: rgba(51, 65, 85, 0.3);
+            border-radius: 4px;
+        }
+
+        .text-content::-webkit-scrollbar-thumb {
+            background: #f59e0b;
+            border-radius: 4px;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: #f59e0b;
+            color: #1e293b;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .copy-btn:hover {
+            background: #fbbf24;
+            transform: translateY(-1px);
+            box-shadow: 0 5px 15px rgba(245, 158, 11, 0.3);
+        }
+
+        .copy-btn.copied {
+            background: #059669;
+            color: white;
+        }
+
+        .info-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .info-card {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.9), rgba(217, 119, 6, 0.9));
+            color: #1e293b;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            backdrop-filter: blur(8px);
+            transition: transform 0.3s ease;
+        }
+
+        .info-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .info-card .value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .info-card .label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: #1e293b;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(245, 158, 11, 0.3);
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+        }
+
+        .btn-secondary {
+            background: rgba(51, 65, 85, 0.8);
+            color: #e2e8f0;
+            border: 1px solid rgba(51, 65, 85, 0.5);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(51, 65, 85, 1);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(51, 65, 85, 0.4);
+        }
+
+        .stats {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 8px;
+            border: 1px solid rgba(51, 65, 85, 0.3);
+            font-size: 14px;
+            color: #cbd5e1;
+        }
+
+        .stats strong {
+            color: #f59e0b;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .info-panel {
+                grid-template-columns: 1fr;
+            }
+            
+            .actions {
+                flex-direction: column;
+            }
+            
+            .copy-btn {
+                position: static;
+                margin-top: 15px;
+                width: 100%;
+            }
+            
+            .text-container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💬 Pastly</h1>
+            <div class="subtitle">Temporary text sharing service</div>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            Loading shared text...
+        </div>
+
+        <div class="error" id="error" style="display: none;">
+            <div class="error-icon">❌</div>
+            <h2>Text Not Found</h2>
+            <p id="errorMessage">This text may have expired or doesn't exist.</p>
+        </div>
+
+        <div class="content" id="content">
+            <div class="text-container">
+                <button class="copy-btn" id="copyBtn">Copy Text</button>
+                <div class="text-content" id="textContent"></div>
+            </div>
+
+            <div class="info-panel">
+                <div class="info-card">
+                    <div class="value" id="viewCount">-</div>
+                    <div class="label">Views</div>
+                </div>
+                <div class="info-card">
+                    <div class="value" id="textLength">-</div>
+                    <div class="label">Characters</div>
+                </div>
+                <div class="info-card">
+                    <div class="value" id="timeLeft">-</div>
+                    <div class="label">Time Left</div>
+                </div>
+            </div>
+
+            <div class="stats">
+                <strong>Created:</strong> <span id="createdAt">-</span><br>
+                <strong>Expires:</strong> <span id="expiresAt">-</span>
+            </div>
+
+            <div class="actions">
+                <a href="/" class="btn btn-primary">Share New Text</a>
+                <button class="btn btn-secondary" id="refreshBtn">Refresh</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const content = document.getElementById('content');
+        const textContent = document.getElementById('textContent');
+        const copyBtn = document.getElementById('copyBtn');
+        const viewCount = document.getElementById('viewCount');
+        const textLength = document.getElementById('textLength');
+        const timeLeft = document.getElementById('timeLeft');
+        const createdAt = document.getElementById('createdAt');
+        const expiresAt = document.getElementById('expiresAt');
+        const errorMessage = document.getElementById('errorMessage');
+        const refreshBtn = document.getElementById('refreshBtn');
+
+        let currentText = '';
+        let expirationTime = null;
+        let updateInterval = null;
+
+        // Get text ID from URL
+        const pathParts = window.location.pathname.split('/');
+        const textId = pathParts[pathParts.length - 1];
+
+        if (!textId) {
+            showError('Invalid share URL');
+        } else {
+            loadText();
+        }
+
+        // Copy functionality
+        copyBtn.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(currentText);
+                copyBtn.textContent = 'Copied!';
+                copyBtn.classList.add('copied');
+                
+                setTimeout(() => {
+                    copyBtn.textContent = 'Copy Text';
+                    copyBtn.classList.remove('copied');
+                }, 2000);
+            } catch (err) {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = currentText;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                
+                copyBtn.textContent = 'Copied!';
+                copyBtn.classList.add('copied');
+                
+                setTimeout(() => {
+                    copyBtn.textContent = 'Copy Text';
+                    copyBtn.classList.remove('copied');
+                }, 2000);
+            }
+        });
+
+        // Refresh functionality
+        refreshBtn.addEventListener('click', () => {
+            location.reload();
+        });
+
+        async function loadText() {
+            try {
+                const response = await fetch(`/api/share/${textId}`);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to load text');
+                }
+
+                displayText(data);
+                startTimeUpdater();
+
+            } catch (err) {
+                showError(err.message);
+            }
+        }
+
+        function displayText(data) {
+            loading.style.display = 'none';
+            content.classList.add('show');
+
+            currentText = data.text;
+            textContent.textContent = data.text;
+            
+            viewCount.textContent = data.views;
+            textLength.textContent = data.text.length;
+            
+            const created = new Date(data.createdAt);
+            const expires = new Date(data.expiresAt);
+            expirationTime = expires;
+            
+            createdAt.textContent = created.toLocaleString();
+            expiresAt.textContent = expires.toLocaleString();
+            
+            updateTimeLeft();
+        }
+
+        function showError(message) {
+            loading.style.display = 'none';
+            errorMessage.textContent = message;
+            error.style.display = 'block';
+        }
+
+        function updateTimeLeft() {
+            if (!expirationTime) return;
+            
+            const now = new Date();
+            const diff = expirationTime.getTime() - now.getTime();
+            
+            if (diff <= 0) {
+                timeLeft.textContent = 'Expired';
+                if (updateInterval) {
+                    clearInterval(updateInterval);
+                }
+                return;
+            }
+            
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+            
+            if (hours > 0) {
+                timeLeft.textContent = `${hours}h ${minutes}m`;
+            } else if (minutes > 0) {
+                timeLeft.textContent = `${minutes}m ${seconds}s`;
+            } else {
+                timeLeft.textContent = `${seconds}s`;
+            }
+        }
+
+        function startTimeUpdater() {
+            updateTimeLeft();
+            updateInterval = setInterval(updateTimeLeft, 1000);
+        }
+
+        // Clean up interval when page is unloaded
+        window.addEventListener('beforeunload', () => {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+            }
+        });
+    </script>
+</body>
+</html>

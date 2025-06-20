@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pastly - Share Text Temporarily</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            background-image: 
+                radial-gradient(circle at 25% 25%, #1a1a2e 0%, transparent 50%),
+                radial-gradient(circle at 75% 75%, #16213e 0%, transparent 50%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: #e2e8f0;
+        }
+
+        .container {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(51, 65, 85, 0.3);
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 
+                0 25px 50px -12px rgba(0, 0, 0, 0.5),
+                0 0 0 1px rgba(255, 255, 255, 0.05);
+            width: 100%;
+            max-width: 600px;
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            text-align: center;
+            color: #f8fafc;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 40px rgba(245, 158, 11, 0.3);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #cbd5e1;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 15px;
+            border: 1px solid rgba(51, 65, 85, 0.5);
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+            resize: vertical;
+            transition: all 0.3s ease;
+            background: rgba(30, 41, 59, 0.5);
+            color: #e2e8f0;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #f59e0b;
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+            background: rgba(30, 41, 59, 0.8);
+        }
+
+        textarea::placeholder {
+            color: #64748b;
+        }
+
+        .expiration-group {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        input[type="number"] {
+            padding: 12px;
+            border: 1px solid rgba(51, 65, 85, 0.5);
+            border-radius: 8px;
+            width: 100px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+            background: rgba(30, 41, 59, 0.5);
+            color: #e2e8f0;
+        }
+
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #f59e0b;
+            background: rgba(30, 41, 59, 0.8);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: #1e293b;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(245, 158, 11, 0.3);
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .result {
+            display: none;
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 8px;
+            border-left: 4px solid #f59e0b;
+            border: 1px solid rgba(51, 65, 85, 0.3);
+        }
+
+        .result.show {
+            display: block;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .url-container {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .url-input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid rgba(51, 65, 85, 0.5);
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+            background: rgba(30, 41, 59, 0.5);
+            color: #e2e8f0;
+        }
+
+        .copy-btn {
+            padding: 12px 20px;
+            background: #059669;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .copy-btn:hover {
+            background: #047857;
+            transform: translateY(-1px);
+        }
+
+        .copy-btn.copied {
+            background: #0891b2;
+        }
+
+        .info {
+            font-size: 14px;
+            color: #94a3b8;
+            margin-top: 10px;
+        }
+
+        .error {
+            color: #f87171;
+            padding: 12px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: 8px;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            color: #f59e0b;
+            font-weight: 600;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(245, 158, 11, 0.2);
+            border-top: 3px solid #f59e0b;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .expiration-group {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>💬 Pastly</h1>
+        
+        <form id="shareForm">
+            <div class="form-group">
+                <label for="textContent">Text to Share:</label>
+                <textarea 
+                    id="textContent" 
+                    placeholder="Enter your text here... It will be securely shared and automatically deleted after the specified time."
+                    maxlength="50000"
+                ></textarea>
+            </div>
+            
+            <div class="form-group">
+                <div class="expiration-group">
+                    <label for="expirationHours">Expires in:</label>
+                    <input 
+                        type="number" 
+                        id="expirationHours" 
+                        min="0.1" 
+                        max="24" 
+                        step="0.1" 
+                        value="24"
+                    >
+                    <span>hours</span>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn" id="shareBtn">
+                Share Text
+            </button>
+        </form>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            Creating share link...
+        </div>
+        
+        <div class="error" id="error"></div>
+        
+        <div class="result" id="result">
+            <h3>✅ Text Shared Successfully!</h3>
+            <div class="url-container">
+                <input type="text" class="url-input" id="shareUrl" readonly>
+                <button class="copy-btn" id="copyBtn">Copy</button>
+            </div>
+            <div class="info" id="shareInfo"></div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('shareForm');
+        const textContent = document.getElementById('textContent');
+        const expirationHours = document.getElementById('expirationHours');
+        const shareBtn = document.getElementById('shareBtn');
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const result = document.getElementById('result');
+        const shareUrl = document.getElementById('shareUrl');
+        const copyBtn = document.getElementById('copyBtn');
+        const shareInfo = document.getElementById('shareInfo');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const text = textContent.value.trim();
+            const hours = parseFloat(expirationHours.value);
+            
+            if (!text) {
+                showError('Please enter some text to share.');
+                return;
+            }
+            
+            if (hours < 0.1 || hours > 24) {
+                showError('Expiration time must be between 0.1 and 24 hours.');
+                return;
+            }
+            
+            hideError();
+            showLoading();
+            
+            try {
+                const response = await fetch('/api/share', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        text: text,
+                        expirationHours: hours
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to create share');
+                }
+                
+                showResult(data);
+                
+            } catch (err) {
+                showError(err.message || 'Failed to create share. Please try again.');
+            } finally {
+                hideLoading();
+            }
+        });
+
+        copyBtn.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(shareUrl.value);
+                copyBtn.textContent = 'Copied!';
+                copyBtn.classList.add('copied');
+                
+                setTimeout(() => {
+                    copyBtn.textContent = 'Copy';
+                    copyBtn.classList.remove('copied');
+                }, 2000);
+            } catch (err) {
+                // Fallback for older browsers
+                shareUrl.select();
+                document.execCommand('copy');
+                copyBtn.textContent = 'Copied!';
+                copyBtn.classList.add('copied');
+                
+                setTimeout(() => {
+                    copyBtn.textContent = 'Copy';
+                    copyBtn.classList.remove('copied');
+                }, 2000);
+            }
+        });
+
+        function showLoading() {
+            loading.style.display = 'block';
+            shareBtn.disabled = true;
+            result.classList.remove('show');
+        }
+
+        function hideLoading() {
+            loading.style.display = 'none';
+            shareBtn.disabled = false;
+        }
+
+        function showError(message) {
+            error.textContent = message;
+            error.classList.add('show');
+        }
+
+        function hideError() {
+            error.classList.remove('show');
+        }
+
+        function showResult(data) {
+            shareUrl.value = data.url;
+            
+            const expirationDate = new Date(data.expiresAt);
+            const timeString = expirationDate.toLocaleString();
+            
+            shareInfo.innerHTML = `
+                <strong>Share URL:</strong> ${data.url}<br>
+                <strong>Expires:</strong> ${timeString}<br>
+                <strong>Text Length:</strong> ${textContent.value.length} characters
+            `;
+            
+            result.classList.add('show');
+        }
+
+        // Auto-resize textarea
+        textContent.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.max(200, this.scrollHeight) + 'px';
+        });
+    </script>
+</body>
+</html>
