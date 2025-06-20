@@ -11,6 +11,9 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static('public'));
 
+// Trust proxy for accurate client IPs (important for production)
+app.set('trust proxy', 1);
+
 // In-memory storage (use Redis or database in production)
 const textStorage = new Map();
 
@@ -29,15 +32,47 @@ function generateId() {
   return crypto.randomBytes(16).toString('hex');
 }
 
+// Rate limiting (simple implementation)
+const rateLimiter = new Map();
+const RATE_LIMIT = 10; // requests per minute
+const RATE_WINDOW = 60 * 1000; // 1 minute
+
+function checkRateLimit(ip) {
+  const now = Date.now();
+  const userRequests = rateLimiter.get(ip) || [];
+  
+  // Remove old requests
+  const validRequests = userRequests.filter(time => now - time < RATE_WINDOW);
+  
+  if (validRequests.length >= RATE_LIMIT) {
+    return false;
+  }
+  
+  validRequests.push(now);
+  rateLimiter.set(ip, validRequests);
+  return true;
+}
+
 // API Routes
 
 // Create a new text share
 app.post('/api/share', (req, res) => {
   try {
+    const clientIP = req.ip || req.connection.remoteAddress;
+    
+    // Check rate limit
+    if (!checkRateLimit(clientIP)) {
+      return res.status(429).json({ error: 'Too many requests. Please wait a minute.' });
+    }
+    
     const { text, expirationHours = 24 } = req.body;
     
     if (!text || text.trim().length === 0) {
       return res.status(400).json({ error: 'Text content is required' });
+    }
+    
+    if (text.length > 100000) { // 100KB limit
+      return res.status(400).json({ error: 'Text too large. Maximum 100,000 characters.' });
     }
     
     if (expirationHours < 0.1 || expirationHours > 24) {
@@ -51,15 +86,21 @@ app.post('/api/share', (req, res) => {
       text: text.trim(),
       createdAt: Date.now(),
       expiresAt,
-      views: 0
+      views: 0,
+      creatorIP: clientIP
     });
+    
+    // Get the host from request for proper URL generation
+    const protocol = req.get('x-forwarded-proto') || req.protocol;
+    const host = req.get('host');
     
     res.json({
       id,
-      url: `${req.protocol}://${req.get('host')}/share/${id}`,
+      url: `${protocol}://${host}/share/${id}`,
       expiresAt: new Date(expiresAt).toISOString()
     });
   } catch (error) {
+    console.error('Share creation error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -89,6 +130,7 @@ app.get('/api/share/:id', (req, res) => {
       views: data.views
     });
   } catch (error) {
+    console.error('Share retrieval error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -115,8 +157,18 @@ app.get('/api/stats/:id', (req, res) => {
       length: data.text.length
     });
   } catch (error) {
+    console.error('Stats retrieval error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'healthy', 
+    timestamp: new Date().toISOString(),
+    activeTexts: textStorage.size
+  });
 });
 
 // Serve the frontend
@@ -126,6 +178,17 @@ app.get('/', (req, res) => {
 
 app.get('/share/:id', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'view.html'));
+});
+
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({ error: 'Not found' });
+});
+
+// Error handler
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({ error: 'Internal server error' });
 });
 
 app.listen(PORT, () => {
